@@ -1,25 +1,24 @@
 /**
- * 经典视觉搜索：特征搜索（颜色 pop-out）与联合搜索（颜色×朝向）
- * 静态托管，数据结束时下载至本地 CSV
+ * 视觉搜索（实验结构见 doc/实验结构.md）
+ * 5×5 固定网格交叉点呈现 T（网格线不画）；无刺激的交叉点留空。
+ * 目标：红色正立 T；仅出现时按空格。
  */
 (function () {
   "use strict";
 
   const FIXATION_MS = 500;
-  const STIM_MS = 3000;
+  const STIM_MS = 2000;
   const FEEDBACK_MS = 800;
   const ITI_MIN_MS = 400;
   const ITI_MAX_MS = 800;
-  const KEY_PRESENT = "j";
-  const KEY_ABSENT = "f";
+  const TARGET_KEY = " ";
+  const GRID_COLS = 5;
+  const GRID_ROWS = 5;
   const CANVAS_W = 720;
   const CANVAS_H = 520;
-  const INNER_MARGIN = 48;
-  const MIN_DIST = 44;
-  const BAR_LEN = 36;
-  const BAR_THICK = 7;
-  const RED = "#c62828";
-  const BLUE = "#1565c0";
+  const T_SIZE = 40;
+  const RED = "#d62828";
+  const BLUE = "#1d4ed8";
   const BLOCKS = 3;
   const TRIALS_PER_BLOCK = 16;
   const PRACTICE_COUNT = 8;
@@ -75,43 +74,59 @@
     }
   });
 
+  /** 25 个交叉点中心（网格线不绘制） */
+  function generateGridCenters(width, height) {
+    const marginX = 60;
+    const marginY = 50;
+    const cellW = (width - marginX * 2) / GRID_COLS;
+    const cellH = (height - marginY * 2) / GRID_ROWS;
+    const all = [];
+    for (let r = 0; r < GRID_ROWS; r++) {
+      for (let c = 0; c < GRID_COLS; c++) {
+        all.push({
+          x: marginX + (c + 0.5) * cellW,
+          y: marginY + (r + 0.5) * cellH
+        });
+      }
+    }
+    return all;
+  }
+
+  const GRID_CENTERS = generateGridCenters(CANVAS_W, CANVAS_H);
+
   function buildBlockTrials(blockIndex) {
+    const setSizes = [5, 10, 15, 20];
     const cells = [];
-    const setSizes = [8, 12, 16];
-    const searches = ["feature", "conjunction"];
-    for (const searchType of searches) {
-      for (const setSize of setSizes) {
+    for (let rep = 0; rep < 2; rep++) {
+      for (let si = 0; si < setSizes.length; si++) {
         for (const tp of [0, 1]) {
           cells.push({
             block: blockIndex,
-            searchType,
-            setSize,
+            setSize: setSizes[si],
             targetPresent: tp
           });
         }
       }
     }
-    if (cells.length !== 12) throw new Error("internal: expected 12 factorial cells");
-    const extra = jsPsych.randomization.shuffle(cells.slice()).slice(0, 4);
-    return jsPsych.randomization.shuffle(cells.concat(extra));
+    if (cells.length !== 16) throw new Error("internal: expected 16 trials per block");
+    return jsPsych.randomization.shuffle(cells);
   }
 
   function buildPracticeTrials() {
     const samples = [
-      { searchType: "feature", setSize: 8, targetPresent: 1 },
-      { searchType: "feature", setSize: 12, targetPresent: 0 },
-      { searchType: "conjunction", setSize: 8, targetPresent: 1 },
-      { searchType: "conjunction", setSize: 16, targetPresent: 0 },
-      { searchType: "feature", setSize: 16, targetPresent: 1 },
-      { searchType: "conjunction", setSize: 12, targetPresent: 0 },
-      { searchType: "feature", setSize: 8, targetPresent: 0 },
-      { searchType: "conjunction", setSize: 12, targetPresent: 1 }
+      { setSize: 5, targetPresent: 1 },
+      { setSize: 5, targetPresent: 0 },
+      { setSize: 10, targetPresent: 1 },
+      { setSize: 10, targetPresent: 0 },
+      { setSize: 15, targetPresent: 1 },
+      { setSize: 15, targetPresent: 0 },
+      { setSize: 20, targetPresent: 1 },
+      { setSize: 20, targetPresent: 0 }
     ];
     const shuffled = jsPsych.randomization.shuffle(
       samples.map(function (s) {
         return {
           block: 0,
-          searchType: s.searchType,
           setSize: s.setSize,
           targetPresent: s.targetPresent,
           task: "practice_trial"
@@ -125,40 +140,24 @@
     return shuffled;
   }
 
-  function buildStimulusList(trialInfo) {
-    const n = trialInfo.setSize;
-    const st = trialInfo.searchType;
-    const tp = trialInfo.targetPresent === 1;
-
-    if (st === "feature") {
-      if (tp) {
-        const items = [{ ori: "v", color: BLUE }];
-        for (let i = 0; i < n - 1; i++) items.push({ ori: "v", color: RED });
-        return shuffle(items);
-      }
-      const items = [];
-      for (let i = 0; i < n; i++) items.push({ ori: "v", color: RED });
-      return shuffle(items);
+  /**
+   * 生成 setSize 个刺激类型；目标为红色正立 T 时恰有一个 red+upright。
+   * 干扰项禁止出现红色正立 T。
+   */
+  function generateStimTypes(setSize, targetPresent) {
+    const arr = [];
+    if (targetPresent === 1) {
+      arr.push({ color: "red", inverted: false });
     }
-
-    if (st === "conjunction") {
-      if (tp) {
-        const items = [{ ori: "v", color: BLUE }];
-        for (let k = 0; k < n - 1; k++) {
-          if (Math.random() < 0.5) items.push({ ori: "v", color: RED });
-          else items.push({ ori: "h", color: BLUE });
-        }
-        return shuffle(items);
+    while (arr.length < setSize) {
+      const inverted = Math.random() < 0.5;
+      let color = Math.random() < 0.5 ? "red" : "blue";
+      if (!inverted && color === "red") {
+        color = "blue";
       }
-      if (n < 2) throw new Error("setSize must be >= 2 for conjunction absent");
-      const items = [];
-      let rv = 1 + Math.floor(Math.random() * (n - 1));
-      let bh = n - rv;
-      for (let i = 0; i < rv; i++) items.push({ ori: "v", color: RED });
-      for (let j = 0; j < bh; j++) items.push({ ori: "h", color: BLUE });
-      return shuffle(items);
+      arr.push({ color: color, inverted: inverted });
     }
-    throw new Error("unknown searchType");
+    return shuffle(arr);
   }
 
   function shuffle(arr) {
@@ -172,50 +171,30 @@
     return a;
   }
 
-  function samplePositions(n) {
-    const w = CANVAS_W;
-    const h = CANVAS_H;
-    const m = INNER_MARGIN;
-
-    function tryPlace(minD) {
-      const out = [];
-      const maxAttempts = 80;
-      for (let i = 0; i < n; i++) {
-        let placed = false;
-        for (let attempt = 0; attempt < maxAttempts * n && !placed; attempt++) {
-          const x = m + BAR_LEN + Math.random() * (w - 2 * m - 2 * BAR_LEN);
-          const y = m + BAR_LEN + Math.random() * (h - 2 * m - 2 * BAR_LEN);
-          if (out.every(function (p) {
-            return Math.hypot(p.x - x, p.y - y) >= minD;
-          })) {
-            out.push({ x: x, y: y });
-            placed = true;
-          }
-        }
-        if (!placed) return null;
-      }
-      return out;
-    }
-
-    let minD = MIN_DIST;
-    for (let round = 0; round < 12; round++) {
-      const pos = tryPlace(minD);
-      if (pos) return pos;
-      minD *= 0.92;
-    }
-    return tryPlace(28) || [];
+  /** 从 25 个网格点中随机选 setSize 个，其余交叉点不呈现任何刺激 */
+  function pickGridIndices(setSize) {
+    const idx = shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]);
+    return idx.slice(0, setSize);
   }
 
-  function drawBar(ctx, x, y, item) {
-    const c = item.color === "blue" ? BLUE : RED;
+  function drawT(ctx, x, y, size, color, inverted) {
+    const main = color === "red" ? RED : BLUE;
     ctx.save();
     ctx.translate(x, y);
-    ctx.fillStyle = c;
-    if (item.ori === "v") {
-      ctx.fillRect(-BAR_THICK / 2, -BAR_LEN / 2, BAR_THICK, BAR_LEN);
-    } else {
-      ctx.fillRect(-BAR_LEN / 2, -BAR_THICK / 2, BAR_LEN, BAR_THICK);
-    }
+    if (inverted) ctx.rotate(Math.PI);
+    ctx.fillStyle = main;
+    ctx.strokeStyle = main;
+    ctx.lineWidth = 3;
+
+    const topW = size;
+    const topH = size * 0.22;
+    const stemW = size * 0.24;
+    const stemH = size * 0.78;
+
+    ctx.fillRect(-topW / 2, -size / 2, topW, topH);
+    ctx.fillRect(-stemW / 2, -size / 2 + topH, stemW, stemH);
+    ctx.strokeRect(-topW / 2, -size / 2, topW, topH);
+    ctx.strokeRect(-stemW / 2, -size / 2 + topH, stemW, stemH);
     ctx.restore();
   }
 
@@ -224,10 +203,12 @@
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const items = buildStimulusList(trialInfo);
-    const positions = samplePositions(items.length);
-    for (let i = 0; i < items.length; i++) {
-      if (positions[i]) drawBar(ctx, positions[i].x, positions[i].y, items[i]);
+    const n = trialInfo.setSize;
+    const indices = pickGridIndices(n);
+    const types = generateStimTypes(n, trialInfo.targetPresent);
+    for (let i = 0; i < n; i++) {
+      const g = GRID_CENTERS[indices[i]];
+      drawT(ctx, g.x, g.y, T_SIZE, types[i].color, types[i].inverted);
     }
   }
 
@@ -243,7 +224,6 @@
         phase: "fixation",
         task: trialInfo.task,
         block: trialInfo.block,
-        searchType: trialInfo.searchType,
         setSize: trialInfo.setSize,
         targetPresent: trialInfo.targetPresent
       }
@@ -268,18 +248,17 @@
           " / " +
           trialInfo.blockTrialTotal +
           " 试次</div>" +
-          "<div class=\"prompt-keys\">目标为<strong>蓝色竖条</strong>：存在按 <kbd>J</kbd> ，不存在按 <kbd>F</kbd></div>" +
+          "<div class=\"prompt-keys\">仅当出现<strong>红色正立 T</strong>时按<strong>空格</strong>；否则不要按键。</div>" +
           "</div>"
         );
       },
-      choices: [KEY_ABSENT, KEY_PRESENT],
+      choices: [TARGET_KEY],
       trial_duration: STIM_MS,
       response_ends_trial: true,
       data: {
         phase: "stimulus",
         task: trialInfo.task,
         block: trialInfo.block,
-        searchType: trialInfo.searchType,
         setSize: trialInfo.setSize,
         targetPresent: trialInfo.targetPresent
       },
@@ -288,18 +267,14 @@
         stimOnset = new Date().toISOString();
       },
       on_finish: function (data) {
-        const key = data.response;
-        const shouldPresent = trialInfo.targetPresent === 1;
-        const pressedPresent = key === KEY_PRESENT;
-        const pressedAbsent = key === KEY_ABSENT;
-        data.response_key = key || "";
+        const pressed = data.response === TARGET_KEY;
+        const shouldPress = trialInfo.targetPresent === 1;
+        data.response_key = pressed ? "space" : "";
         data.timeout = data.response === null;
-        if (data.timeout) {
-          data.correct = 0;
-        } else if (shouldPresent) {
-          data.correct = pressedPresent ? 1 : 0;
+        if (shouldPress) {
+          data.correct = pressed ? 1 : 0;
         } else {
-          data.correct = pressedAbsent ? 1 : 0;
+          data.correct = pressed ? 0 : 1;
         }
         data.stimOnset = stimOnset;
         data.trialEnd = new Date().toISOString();
@@ -310,7 +285,7 @@
       type: jsPsychHtmlKeyboardResponse,
       stimulus: function () {
         const d = jsPsych.data.get().last(1).values()[0];
-        if (d.timeout) {
+        if (trialInfo.targetPresent === 1 && d.timeout) {
           return "<div class=\"center-screen\"><div class=\"feedback fb-slow\">太慢了</div></div>";
         }
         if (d.correct === 1) {
@@ -356,7 +331,6 @@
           gender: r.gender || "",
           task: r.task || "",
           block: r.block,
-          searchType: r.searchType || "",
           setSize: r.setSize,
           targetPresent: r.targetPresent,
           response: r.response_key || "",
@@ -443,7 +417,7 @@
         participant: participantId,
         age: ans.age,
         gender: ans.gender,
-        expName: "visual_search_static",
+        expName: "visual_search_grid",
         userAgent: navigator.userAgent
       });
     }
@@ -454,19 +428,19 @@
     stimulus:
       "<div class=\"exp-wrap\">" +
       "<h2>视觉搜索实验</h2>" +
-      "<p>屏幕上会呈现若干<strong>红色或蓝色的长条</strong>（竖或横）。</p>" +
-      "<p><strong>目标刺激</strong>：<strong>蓝色竖条</strong>。</p>" +
-      "<p><strong>特征搜索</strong>试次中，干扰物均为红色竖条；蓝色竖条在颜色上非常显眼。</p>" +
-      "<p><strong>联合搜索</strong>试次中，干扰物为红色竖条与蓝色横条的混合；你必须同时注意颜色和朝向。</p>" +
-      "<p>若你认为<strong>存在</strong>目标（蓝色竖条），请尽快按 <kbd>J</kbd>；若<strong>不存在</kbd>，请按 <kbd>F</kbd>。</p>" +
-      "<p>首先进行 " +
+      "<p>刺激呈现在<strong>固定的 5×5 网格交叉点</strong>上（不显示网格线）；没有字母的交叉点保持空白。</p>" +
+      "<p>每次会呈现若干 <strong>T</strong>，颜色与朝向可能为：红色正立、红色倒立、蓝色正立、蓝色倒立。</p>" +
+      "<p><strong>规则</strong>：仅当出现<strong>红色正立 T</strong>时尽快按<strong>空格键</strong>；若没有出现红色正立 T（包括只有红倒立、蓝正立、蓝倒立），则<strong>不要按键</strong>。</p>" +
+      "<p>刺激呈现至你按键或 " +
+      STIM_MS / 1000 +
+      " 秒。首先 " +
       PRACTICE_COUNT +
-      " 次练习，随后正式实验共 " +
+      " 次练习，然后正式实验 " +
       BLOCKS +
       " 个 block，每 block " +
       TRIALS_PER_BLOCK +
-      " 试次。</p>" +
-      "<p>请尽量又快又准。实验结束后数据将<strong>自动下载</strong>到本机。</p>" +
+      " 试次（共 48 试次）。</p>" +
+      "<p>实验结束后数据将<strong>自动下载</strong>到本机。</p>" +
       "</div>",
     choices: ["开始练习"]
   });
@@ -486,7 +460,6 @@
     blockTrials.forEach(function (trial, idx) {
       appendOneTrial(timeline, {
         block: b,
-        searchType: trial.searchType,
         setSize: trial.setSize,
         targetPresent: trial.targetPresent,
         blockTrialN: idx + 1,
