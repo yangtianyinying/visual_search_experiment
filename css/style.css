@@ -1,0 +1,100 @@
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: #fafafa;
+  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+  margin: 0;
+  color: #1a1a1a;
+}
+
+#jspsych-target {
+  min-height: 100vh;
+}
+
+.jspsych-content {
+  max-width: 960px;
+}
+
+.center-screen {
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.exp-wrap {
+  max-width: 820px;
+  margin: 0 auto;
+  line-height: 1.75;
+  font-size: 18px;
+  text-align: left;
+}
+
+.exp-wrap h2,
+.exp-wrap h3 {
+  margin-top: 0;
+  font-weight: 600;
+}
+
+.feedback {
+  font-size: 36px;
+  font-weight: 700;
+}
+
+.fb-correct {
+  color: #2e7d32;
+}
+
+.fb-wrong {
+  color: #c62828;
+}
+
+.fb-slow {
+  color: #f57c00;
+}
+
+.fixation {
+  font-size: 48px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1;
+  color: #333;
+}
+
+.stim-wrap {
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+#stim-canvas {
+  width: 720px;
+  height: 520px;
+  display: block;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.trial-progress {
+  margin-top: 14px;
+  font-size: 16px;
+  color: #555;
+}
+
+.prompt-keys {
+  margin-top: 8px;
+  font-size: 15px;
+  color: #444;
+}
+
+.jspsych-btn {
+  padding: 10px 22px;
+  font-size: 16px;
+}
