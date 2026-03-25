@@ -19,8 +19,9 @@
   const T_SIZE = 40;
   const RED = "#d62828";
   const BLUE = "#1d4ed8";
-  const BLOCKS = 3;
-  const TRIALS_PER_BLOCK = 16;
+  const STIM_LIB = window.VisualSearchStimulate || {};
+  const BLOCKS = Number.isInteger(STIM_LIB.blocks) ? STIM_LIB.blocks : 3;
+  const TRIALS_PER_BLOCK = Number.isInteger(STIM_LIB.trialsPerBlock) ? STIM_LIB.trialsPerBlock : 40;
   const PRACTICE_COUNT = 8;
 
   const mountEl = document.getElementById("jspsych-target");
@@ -95,21 +96,10 @@
   const GRID_CENTERS = generateGridCenters(CANVAS_W, CANVAS_H);
 
   function buildBlockTrials(blockIndex) {
-    const setSizes = [5, 10, 15, 20];
-    const cells = [];
-    for (let rep = 0; rep < 2; rep++) {
-      for (let si = 0; si < setSizes.length; si++) {
-        for (const tp of [0, 1]) {
-          cells.push({
-            block: blockIndex,
-            setSize: setSizes[si],
-            targetPresent: tp
-          });
-        }
-      }
+    if (typeof STIM_LIB.buildBlockTrials === "function") {
+      return STIM_LIB.buildBlockTrials(blockIndex);
     }
-    if (cells.length !== 16) throw new Error("internal: expected 16 trials per block");
-    return jsPsych.randomization.shuffle(cells);
+    throw new Error("缺少刺激集生成器：请检查 js/Stimulate.js 是否已加载。");
   }
 
   function buildPracticeTrials() {
@@ -439,7 +429,9 @@
       BLOCKS +
       " 个 block，每 block " +
       TRIALS_PER_BLOCK +
-      " 试次（共 48 试次）。</p>" +
+      " 试次（共 " +
+      BLOCKS * TRIALS_PER_BLOCK +
+      " 试次）。</p>" +
       "<p>实验结束后数据将<strong>自动下载</strong>到本机。</p>" +
       "</div>",
     choices: ["开始练习"]
