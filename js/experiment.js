@@ -238,7 +238,6 @@
           " / " +
           trialInfo.blockTrialTotal +
           " 试次</div>" +
-          "<div class=\"prompt-keys\">仅当出现<strong>红色正立 T</strong>时按<strong>空格</strong>；否则不要按键。</div>" +
           "</div>"
         );
       },
@@ -417,7 +416,7 @@
     type: jsPsychHtmlButtonResponse,
     stimulus:
       "<div class=\"exp-wrap\">" +
-      "<h2>视觉搜索实验</h2>" +
+      "<h2>欢迎参加本实验</h2>" +
       "<p>刺激呈现在<strong>固定的 5×5 网格交叉点</strong>上（不显示网格线）；没有字母的交叉点保持空白。</p>" +
       "<p>每次会呈现若干 <strong>T</strong>，颜色与朝向可能为：红色正立、红色倒立、蓝色正立、蓝色倒立。</p>" +
       "<p><strong>规则</strong>：仅当出现<strong>红色正立 T</strong>时尽快按<strong>空格键</strong>；若没有出现红色正立 T（包括只有红倒立、蓝正立、蓝倒立），则<strong>不要按键</strong>。</p>" +
