@@ -229,15 +229,6 @@
           "\" height=\"" +
           CANVAS_H +
           "\"></canvas>" +
-          "<div class=\"trial-progress\">" +
-          (trialInfo.task === "practice_trial"
-            ? "练习"
-            : "Block " + trialInfo.block + " / " + BLOCKS) +
-          "：第 " +
-          trialInfo.blockTrialN +
-          " / " +
-          trialInfo.blockTrialTotal +
-          " 试次</div>" +
           "</div>"
         );
       },
@@ -369,6 +360,10 @@
 
   const timeline = [];
 
+
+
+
+
   timeline.push({
     type: jsPsychFullscreen,
     fullscreen_mode: true,
@@ -413,27 +408,18 @@
   });
 
   timeline.push({
-    type: jsPsychHtmlButtonResponse,
+    type: jsPsychHtmlKeyboardResponse,
     stimulus:
       "<div class=\"exp-wrap\">" +
       "<h2>欢迎参加本实验</h2>" +
-      "<p>刺激呈现在<strong>固定的 5×5 网格交叉点</strong>上（不显示网格线）；没有字母的交叉点保持空白。</p>" +
-      "<p>每次会呈现若干 <strong>T</strong>，颜色与朝向可能为：红色正立、红色倒立、蓝色正立、蓝色倒立。</p>" +
-      "<p><strong>规则</strong>：仅当出现<strong>红色正立 T</strong>时尽快按<strong>空格键</strong>；若没有出现红色正立 T（包括只有红倒立、蓝正立、蓝倒立），则<strong>不要按键</strong>。</p>" +
-      "<p>刺激呈现至你按键或 " +
-      STIM_MS / 1000 +
-      " 秒。首先 " +
-      PRACTICE_COUNT +
-      " 次练习，然后正式实验 " +
-      BLOCKS +
-      " 个 block，每 block " +
-      TRIALS_PER_BLOCK +
-      " 试次（共 " +
-      BLOCKS * TRIALS_PER_BLOCK +
-      " 试次）。</p>" +
-      "<p>实验结束后数据将<strong>自动下载</strong>到本机。</p>" +
+      "<p>屏幕中心的注视点消失后，5x5 的虚拟网格中会呈现若干字母“T” 。这些字母包含四种组合：红色正立、红色倒立、蓝色正立、蓝色倒立 。</p>" +
+      "<p>规则：仅当出现红色正立 T时，请尽快按空格键；若没有出现红色正立T（包括只有红倒立、蓝正立、蓝倒立），则不要按键。</p>" +
+      "<p>刺激最长呈现2秒，按键后将自动进入下一试次 。</p>" +
+      "<p>实验包含 8次练习，随后进入正式实验。正式实验共有 3个区块 (Block)，每区块 40次试次（总计 120 试次） 。</p>" +
+      "<p>实验结束后，数据将自动下载至本机。</p>" +
+      "<p>准备好后，请按任意键开始练习。</p>" +
       "</div>",
-    choices: ["开始练习"]
+    choices: "ALL_KEYS"
   });
 
   buildPracticeTrials().forEach(function (t) {
