@@ -132,12 +132,20 @@
 
   /**
    * 生成 setSize 个刺激类型；目标为红色正立 T 时恰有一个 red+upright。
+   * 并保证每个 trial 同时包含红色与蓝色 T。
    * 干扰项禁止出现红色正立 T。
    */
   function generateStimTypes(setSize, targetPresent) {
     const arr = [];
     if (targetPresent === 1) {
+      // 目标：红色正立 T
       arr.push({ color: "red", inverted: false });
+      // 保证蓝色特征一定出现
+      arr.push({ color: "blue", inverted: Math.random() < 0.5 });
+    } else {
+      // 无目标条件：先放一个红色倒立和一个蓝色，确保红蓝都出现
+      arr.push({ color: "red", inverted: true });
+      arr.push({ color: "blue", inverted: Math.random() < 0.5 });
     }
     while (arr.length < setSize) {
       const inverted = Math.random() < 0.5;
